@@ -1,0 +1,58 @@
+version: '3.8'
+services:
+  sales_database:
+    image: postgres:latest
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: sales
+    networks:
+      backend:
+        aliases:
+          - "sales_database"
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  sales:
+    image: sales-test
+    ports:
+      - "8081:8081"
+    depends_on:
+      sales_database:
+        condition: service_healthy
+    networks:
+      - backend
+
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    container_name: prometheus
+    networks:
+      backend:
+        aliases:
+          - "prometheus"
+
+  grafana:
+    image: "grafana/grafana:latest"
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    container_name: grafana
+    networks:
+      backend:
+        aliases:
+          - "grafana"
+
+networks:
+  backend:
+    driver: bridge
